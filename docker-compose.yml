@@ -1,0 +1,90 @@
+# ============================================
+# DOCKER COMPOSE - ORCHESTRATION
+# ============================================
+version: '3.8'
+
+# ============================================
+# NETWORKS - Comunicação entre containers
+# ============================================
+networks:
+  app-network:
+    driver: bridge
+
+# ============================================
+# VOLUMES - Persistência de dados
+# ============================================
+volumes:
+  postgres-data:
+  redis-data:
+
+# ============================================
+# SERVICES - Containers que vão rodar
+# ============================================
+services:
+  
+  # ------------------------------------------
+  # APP - Aplicação Node.js
+  # ------------------------------------------
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: webapp
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/webapp
+      - REDIS_URL=redis://cache:6379
+    networks:
+      - app-network
+    depends_on:
+      - db
+      - cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ------------------------------------------
+  # DB - PostgreSQL Database
+  # ------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: webapp-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=webapp
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------
+  # CACHE - Redis
+  # ------------------------------------------
+  cache:
+    image: redis:7-alpine
+    container_name: webapp-cache
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
