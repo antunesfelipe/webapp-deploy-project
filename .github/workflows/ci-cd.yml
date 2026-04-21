@@ -120,7 +120,7 @@ jobs:
       
       # Subir stack completo
       - name: Start full stack
-        run: docker-compose up -d
+        run: docker compose up -d
       
       # Aguardar containers ficarem healthy
       - name: Wait for services
@@ -128,7 +128,7 @@ jobs:
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
           
-          docker-compose ps
+          docker compose ps
       
       # Testar integração
       - name: Test integration
@@ -144,12 +144,12 @@ jobs:
       # Mostrar logs se falhar
       - name: Show logs on failure
         if: failure()
-        run: docker-compose logs
+        run: docker compose logs
       
       # Sempre parar containers
       - name: Cleanup
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
 
   # ------------------------------------------
   # JOB 4: DEPLOY (Simulado)
